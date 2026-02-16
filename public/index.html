@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Metahunter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --primary: #ff5f1f; /* Neon Orange */
+            --primary-glow: rgba(255, 95, 31, 0.5);
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: #888888;
+        }
+
+        * { box-sizing: border-box; }
+
+        body { 
+            background-color: var(--bg);
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif; 
+            margin: 0;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* --- Dynamic Particle Background --- */
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- Header & Branding --- */
+        .badge-container { display: flex; gap: 12px; margin-bottom: 25px; }
+        
+        .claude-badge {
+            background: rgba(255, 95, 31, 0.1);
+            border: 1px solid var(--primary-glow);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 0 15px rgba(255, 95, 31, 0.1);
+        }
+
+        .status-dot {
+            width: 6px; height: 6px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary);
+            animation: pulse 1.5s infinite;
+        }
+
+        h1 { 
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            letter-spacing: -2px;
+            margin: 0;
+            text-transform: uppercase;
+            background: linear-gradient(to bottom, #fff 30%, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin: 15px 0 45px;
+            letter-spacing: 1px;
+        }
+
+        /* --- Main Action Button --- */
+        .btn {
+            background: var(--primary);
+            color: #000;
+            padding: 18px 50px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 800;
+            border: none;
+            border-radius: 4px; /* Industrial Sharp Look */
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 30px var(--primary-glow);
+            text-transform: uppercase;
+        }
+
+        .btn:hover { 
+            transform: scale(1.05) translateY(-3px);
+            box-shadow: 0 0 50px var(--primary);
+            letter-spacing: 2px;
+        }
+
+        .btn:disabled { background: #222; color: #444; box-shadow: none; cursor: wait; }
+
+        /* --- Results & Glassmorphism --- */
+        #results { 
+            display: none; 
+            width: 100%;
+            margin-top: 80px;
+            text-align: left; 
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        .analysis-card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            margin-bottom: 50px;
+            position: relative;
+            box-shadow: inset 0 0 40px rgba(255,255,255,0.02);
+        }
+
+        .meta-label { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: var(--primary); letter-spacing: 3px; }
+        .meta-big { font-family: 'Orbitron', sans-serif; font-size: 5rem; font-weight: 900; color: #fff; margin: 10px 0; line-height: 1; }
+        .ai-text {
+            margin-top: 30px;
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: #d1d1d1;
+            padding-left: 25px;
+            border-left: 2px solid var(--primary);
+        }
+
+        /* --- Project Grid --- */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
+
+        .card { 
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: var(--primary);
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .card-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .card-icon { width: 50px; height: 50px; border-radius: 12px; border: 1px solid var(--glass-border); }
+        .card-title { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem; color: #fff; }
+
+        .ca-box { 
+            font-family: monospace; font-size: 0.75rem; background: #000; padding: 12px; 
+            color: #666; border-radius: 8px; cursor: pointer; border: 1px solid #222; 
+            text-align: center; margin-bottom: 20px; transition: 0.2s;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .ca-box:hover { color: #fff; border-color: var(--primary); }
+
+        .buy-btn {
+            display: block; width: 100%; text-align: center;
+            background: #fff; color: #000; text-decoration: none;
+            padding: 12px; border-radius: 8px; font-weight: 800; font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem; transition: 0.3s;
+        }
+        .buy-btn:hover { background: var(--primary); color: #fff; }
+
+        .footer { margin-top: 100px; opacity: 0.3; font-size: 0.7rem; letter-spacing: 2px; }
+
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="container">
+        <div class="badge-container">
+            <div class="claude-badge"><div class="status-dot"></div> CLAUDE NEURAL LINK</div>
+            <div class="claude-badge" style="color:var(--accent); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.1);">SOLANA MAINNET</div>
+        </div>
+
+        <h1>Claw MetaHunter</h1>
+        <p class="subtitle">Autonomous Narrative Extraction // Neural Dragnet v2.0</p>
+
+        <button id="scanBtn" class="btn" onclick="startHunt()">Initiate Deep Scan</button>
+
+        <div id="loading">
+            <div class="spinner"></div>
+            <p style="font-family:'Orbitron'; font-size:0.8rem; color:var(--primary); letter-spacing:2px;">CONSULTING CLAUDE AI...</p>
+        </div>
+
+        <div id="results">
+            <div class="analysis-card">
+                <div class="meta-label">DETECTED NARRATIVE</div>
+                <div id="meta-word" class="meta-big">...</div>
+                <div id="meta-stats" style="color:var(--text-muted); font-size:0.9rem; letter-spacing:1px;">...</div>
+                <div class="ai-text" id="ai-output">...</div>
+            </div>
+            <div class="grid" id="coin-grid"></div>
+        </div>
+
+        <div class="footer">POWERED BY CLAUDE 3.5 SONNET & DEXSCREENER // 2026</div>
+    </div>
+
+    <script>
+        // --- Particle Background Script ---
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function init() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            particles = [];
+            for(let i=0; i<80; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2,
+                    speedX: (Math.random() - 0.5) * 0.5,
+                    speedY: (Math.random() - 0.5) * 0.5
+                });
+            }
+        }
+        function animate() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = '#ff5f1f';
+            particles.forEach(p => {
+                p.x += p.speedX; p.y += p.speedY;
+                if(p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+                if(p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+            });
+            requestAnimationFrame(animate);
+        }
+        window.addEventListener('resize', init);
+        init(); animate();
+
+        // --- Logic ---
+        async function startHunt() {
+            const btn = document.getElementById('scanBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            results.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/hunt');
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('meta-word').innerText = data.meta_keyword;
+                    document.getElementById('meta-stats').innerText = `${data.meta_count} PROJECTS DETECTED IN ${data.total_scanned} SCANS`;
+                    document.getElementById('ai-output').innerText = data.ai_analysis;
+                    
+                    document.getElementById('coin-grid').innerHTML = data.filtered_list.map(coin => `
+                        <div class="card">
+                            <div class="card-header">
+                                <img src="${coin.icon || 'https://dexscreener.com/favicon.ico'}" class="card-icon">
+                                <div class="card-title">${coin.name}</div>
+                            </div>
+                            <div class="desc" style="font-size:0.85rem; color:#888; margin-bottom:15px; height:40px; overflow:hidden;">${coin.description}</div>
+                            <div class="ca-box" onclick="navigator.clipboard.writeText('${coin.address}'); alert('CA Copied!')">${coin.address}</div>
+                            <a href="https://photon-sol.tinyastro.io/en/lp/${coin.address}" target="_blank" class="buy-btn">BUY ON PHOTON</a>
+                        </div>
+                    `).join('');
+                    results.style.display = 'block';
+                }
+            } catch (err) { alert("Neural link failed."); }
+            loading.style.display = 'none';
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
